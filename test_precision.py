@@ -348,11 +348,11 @@ def run_test(name, fn, expected, tol):
     variance = sum((x - avg)**2 for x in results) / len(results)
     std    = math.sqrt(variance)
 
-    # Drift check: any result differs from first beyond floating point?
+    # drift check: any result differs from first beyond floating point?
     max_drift = max(abs(r - first) for r in results)
     has_drift = max_drift > 0.0
 
-    # Expected value check
+    # expected value check
     if expected != 0:
         rel_error = abs(avg - expected) / abs(expected)
         passes_expected = rel_error <= tol
@@ -405,7 +405,7 @@ def main():
         r = run_test(name, fn, expected, tol)
         results.append(r)
 
-        # Status symbol
+        # status
         sym = {"PASS": "✓", "WARN": "⚠", "DRIFT": "⟳", "ERROR": "✗"}.get(r["status"], "?")
 
         if r["status"] == "ERROR":
@@ -424,7 +424,7 @@ def main():
 
     elapsed_total = time.perf_counter() - t_total
 
-    # Summary
+    # summary
     n_pass  = sum(1 for r in results if r.get("status") == "PASS")
     n_warn  = sum(1 for r in results if r.get("status") == "WARN")
     n_drift = sum(1 for r in results if r.get("status") == "DRIFT")
