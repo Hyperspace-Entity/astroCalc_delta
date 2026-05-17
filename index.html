@@ -22,7 +22,7 @@
     .hstatus{display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--dim)}
     .sdot{width:6px;height:6px;background:var(--green);border-radius:50%;box-shadow:0 0 6px var(--green);animation:pulse 2s ease-in-out infinite}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-    aside{grid-row:2;border-right:1px solid var(--border);background:rgba(10,14,26,0.6);overflow-y:auto;padding:1.5rem 0}
+    aside{grid-row:2;border-right:2px solid var(--border2);background:rgba(10,14,26,0.6);overflow-y:auto;padding:1.5rem 0;box-shadow:inset -4px 0 12px rgba(0,0,0,0.3)}
     .ss{padding:0 1.25rem 1.25rem}.sw{position:relative}
     .si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--dim);font-size:0.75rem}
     #search{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 10px 8px 30px;font-family:'Space Mono',monospace;font-size:0.75rem;color:var(--text);outline:none;transition:border-color 0.2s}
@@ -77,6 +77,58 @@
     .hidden{display:none!important}
     .fade-in{animation:fadeIn 0.4s ease both}
     @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+    /* ── Mobile layout ─────────────────────────────────── */
+    #menu-toggle { display: none; }
+
+    @media (max-width: 768px) {
+      .shell {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr;
+      }
+
+      header { padding: 0 1rem; }
+
+      /* Sidebar: always-visible compact index strip */
+      aside {
+        grid-row: 2;
+        border-right: none;
+        border-bottom: 2px solid var(--border2);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        padding: 0.75rem 0;
+        height: 220px;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      /* Tighten search bar */
+      .ss { padding: 0 0.75rem 0.75rem; }
+
+      /* Compact formula buttons */
+      .fb {
+        padding: 6px 0.75rem;
+        font-size: 0.75rem;
+      }
+      .dl {
+        padding: 4px 0.75rem;
+        font-size: 0.55rem;
+      }
+
+      main {
+        grid-row: 3;
+        padding: 1rem;
+        /* Ensure main scrolls independently */
+        overflow-y: auto;
+      }
+
+      /* Minor tightening */
+      .hero { padding: 2rem 1rem; }
+      .hero-title { font-size: clamp(1.6rem, 7vw, 2.5rem); }
+      .dgrid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+      .ig { grid-template-columns: 1fr; }
+      .cbtn { width: 100%; align-self: stretch; }
+      .eqdis { font-size: 0.75rem; word-break: break-all; }
+    }
   </style>
 </head>
 <body>
@@ -86,7 +138,7 @@
     <a class="logo" href="#"><div class="logo-mark"></div><span class="logo-text">Astro<span>Calc</span> Δ</span></a>
     <div class="hstatus"><div class="sdot"></div><span id="status-text">INITIALISING...</span></div>
   </header>
-  <aside>
+  <aside id="sidebar">
     <div class="ss"><div class="sw"><span class="si">⌕</span><input id="search" type="text" placeholder="Search formulas..." autocomplete="off"/></div></div>
     <div id="formula-list"></div>
   </aside>
@@ -124,6 +176,8 @@
 // STARFIELD
 (function(){const c=document.getElementById('starfield'),ctx=c.getContext('2d');let W,H,stars=[];function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight;}function init(n=200){stars=Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.2+0.2,a:Math.random(),da:(Math.random()-0.5)*0.005}));}function draw(){ctx.clearRect(0,0,W,H);stars.forEach(s=>{s.a=Math.max(0.05,Math.min(1,s.a+s.da));if(s.a<=0.05||s.a>=1)s.da*=-1;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=`rgba(180,210,255,${s.a})`;ctx.fill();});requestAnimationFrame(draw);}resize();init();draw();window.addEventListener('resize',()=>{resize();init();});})();
 
+
+
 const DOMAIN_META={
   orbital:   {label:'Orbital Mechanics',      icon:'🪐',color:'#3a7fff'},
   propulsion:{label:'Rocket Propulsion',       icon:'🚀',color:'#ff8c3a'},
@@ -133,15 +187,65 @@ const DOMAIN_META={
   em:        {label:'Electromagnetism',         icon:'⚡',color:'#00cfff'},
 };
 
+const FALLBACK_FORMULAS={
+  // Orbital
+  orbital_velocity:    {label:'Orbital Velocity',          domain:'orbital',   equation:'v = √(GM/r)',         params:[{id:'G',label:'Gravitational Constant',unit:'m³/kg·s²',default:6.674e-11},{id:'M',label:'Central Body Mass',unit:'kg',default:5.972e24},{id:'r',label:'Orbital Radius',unit:'m',default:6.771e6}]},
+  escape_velocity:     {label:'Escape Velocity',           domain:'orbital',   equation:'v = √(2GM/r)',        params:[{id:'G',label:'Gravitational Constant',unit:'m³/kg·s²',default:6.674e-11},{id:'M',label:'Body Mass',unit:'kg',default:5.972e24},{id:'r',label:'Radius',unit:'m',default:6.371e6}]},
+  orbital_period:      {label:'Orbital Period (Kepler III)',domain:'orbital',   equation:'T = 2π√(a³/GM)',     params:[{id:'a',label:'Semi-major Axis',unit:'m',default:3.844e8},{id:'G',label:'Gravitational Constant',unit:'m³/kg·s²',default:6.674e-11},{id:'M',label:'Central Mass',unit:'kg',default:5.972e24}]},
+  vis_viva:            {label:'Vis-Viva Equation',         domain:'orbital',   equation:'v² = GM(2/r − 1/a)',  params:[{id:'G',label:'Gravitational Constant',unit:'m³/kg·s²',default:6.674e-11},{id:'M',label:'Central Mass',unit:'kg',default:5.972e24},{id:'r',label:'Current Radius',unit:'m',default:6.771e6},{id:'a',label:'Semi-major Axis',unit:'m',default:6.771e6}]},
+  hohmann_dv1:         {label:'Hohmann Transfer Δv₁',     domain:'orbital',   equation:'Δv₁ = √(GM/r₁)(√(2r₂/(r₁+r₂))−1)', params:[{id:'G',label:'G',unit:'m³/kg·s²',default:6.674e-11},{id:'M',label:'Central Mass',unit:'kg',default:5.972e24},{id:'r1',label:'Initial Orbit Radius',unit:'m',default:6.771e6},{id:'r2',label:'Target Orbit Radius',unit:'m',default:4.2164e7}]},
+  // Propulsion
+  tsiolkovsky:         {label:'Tsiolkovsky Rocket Equation',domain:'propulsion',equation:'Δv = v_e · ln(m₀/m_f)',params:[{id:'ve',label:'Exhaust Velocity',unit:'m/s',default:4500},{id:'m0',label:'Initial Mass',unit:'kg',default:500000},{id:'mf',label:'Dry Mass',unit:'kg',default:50000}]},
+  thrust:              {label:'Thrust',                    domain:'propulsion',equation:'F = ṁ · v_e',          params:[{id:'mdot',label:'Mass Flow Rate',unit:'kg/s',default:250},{id:'ve',label:'Exhaust Velocity',unit:'m/s',default:3000}]},
+  specific_impulse:    {label:'Specific Impulse',          domain:'propulsion',equation:'Isp = v_e / g₀',       params:[{id:'ve',label:'Exhaust Velocity',unit:'m/s',default:4500},{id:'g0',label:'Standard Gravity',unit:'m/s²',default:9.80665}]},
+  mass_ratio:          {label:'Mass Ratio',                domain:'propulsion',equation:'R = m₀ / m_f',         params:[{id:'m0',label:'Initial Mass',unit:'kg',default:500000},{id:'mf',label:'Dry Mass',unit:'kg',default:50000}]},
+  // Planetary
+  surface_gravity:     {label:'Surface Gravity',           domain:'planetary', equation:'g = GM/R²',           params:[{id:'G',label:'Gravitational Constant',unit:'m³/kg·s²',default:6.674e-11},{id:'M',label:'Planet Mass',unit:'kg',default:5.972e24},{id:'R',label:'Planet Radius',unit:'m',default:6.371e6}]},
+  roche_limit:         {label:'Roche Limit',               domain:'planetary', equation:'d = R_M · (2ρ_M/ρ_m)^(1/3)', params:[{id:'RM',label:'Primary Radius',unit:'m',default:6.371e6},{id:'rhoM',label:'Primary Density',unit:'kg/m³',default:5515},{id:'rhom',label:'Satellite Density',unit:'kg/m³',default:3346}]},
+  hill_sphere:         {label:'Hill Sphere',               domain:'planetary', equation:'r_H ≈ a(m/3M)^(1/3)', params:[{id:'a',label:'Semi-major Axis',unit:'m',default:1.496e11},{id:'m',label:'Planet Mass',unit:'kg',default:5.972e24},{id:'M',label:'Star Mass',unit:'kg',default:1.989e30}]},
+  // Relativity
+  time_dilation:       {label:'Time Dilation',             domain:'relativity',equation:'t = t₀ / √(1 − v²/c²)',params:[{id:'t0',label:'Proper Time',unit:'s',default:1},{id:'v',label:'Velocity',unit:'m/s',default:2.9e8},{id:'c',label:'Speed of Light',unit:'m/s',default:2.998e8}]},
+  length_contraction:  {label:'Length Contraction',        domain:'relativity',equation:'L = L₀√(1 − v²/c²)',  params:[{id:'L0',label:'Proper Length',unit:'m',default:100},{id:'v',label:'Velocity',unit:'m/s',default:2.9e8},{id:'c',label:'Speed of Light',unit:'m/s',default:2.998e8}]},
+  schwarzschild:       {label:'Schwarzschild Radius',      domain:'relativity',equation:'r_s = 2GM/c²',         params:[{id:'G',label:'G',unit:'m³/kg·s²',default:6.674e-11},{id:'M',label:'Mass',unit:'kg',default:1.989e30},{id:'c',label:'Speed of Light',unit:'m/s',default:2.998e8}]},
+  kerr_horizon:        {label:'Kerr Event Horizon',        domain:'relativity',equation:'r± = GM/c² ± √((GM/c²)²−a²)', params:[{id:'G',label:'G',unit:'m³/kg·s²',default:6.674e-11},{id:'M',label:'Mass',unit:'kg',default:1.989e30},{id:'c',label:'Speed of Light',unit:'m/s',default:2.998e8},{id:'a',label:'Spin Parameter',unit:'m',default:1000}]},
+  mass_energy:         {label:'Mass–Energy Equivalence',   domain:'relativity',equation:'E = mc²',              params:[{id:'m',label:'Mass',unit:'kg',default:1},{id:'c',label:'Speed of Light',unit:'m/s',default:2.998e8}]},
+  // Quantum
+  de_broglie:          {label:'de Broglie Wavelength',     domain:'quantum',   equation:'λ = h / p',           params:[{id:'h',label:'Planck Constant',unit:'J·s',default:6.626e-34},{id:'p',label:'Momentum',unit:'kg·m/s',default:1e-24}]},
+  heisenberg:          {label:'Heisenberg Uncertainty',    domain:'quantum',   equation:'Δx·Δp ≥ ℏ/2',        params:[{id:'hbar',label:'ℏ',unit:'J·s',default:1.055e-34},{id:'dx',label:'Position Uncertainty',unit:'m',default:1e-10}]},
+  photon_energy:       {label:'Photon Energy',             domain:'quantum',   equation:'E = hf',              params:[{id:'h',label:'Planck Constant',unit:'J·s',default:6.626e-34},{id:'f',label:'Frequency',unit:'Hz',default:6e14}]},
+  bohr_radius:         {label:'Bohr Radius (hydrogen)',    domain:'quantum',   equation:'a₀ = ℏ²/mₑke²',      params:[{id:'hbar',label:'ℏ',unit:'J·s',default:1.055e-34},{id:'me',label:'Electron Mass',unit:'kg',default:9.109e-31},{id:'k',label:'Coulomb Constant',unit:'N·m²/C²',default:8.988e9},{id:'e',label:'Electron Charge',unit:'C',default:1.602e-19}]},
+  // EM
+  coulomb:             {label:'Coulomb Force',             domain:'em',        equation:'F = kq₁q₂/r²',       params:[{id:'k',label:'Coulomb Constant',unit:'N·m²/C²',default:8.988e9},{id:'q1',label:'Charge 1',unit:'C',default:1.602e-19},{id:'q2',label:'Charge 2',unit:'C',default:1.602e-19},{id:'r',label:'Distance',unit:'m',default:1e-10}]},
+  cyclotron_freq:      {label:'Cyclotron Frequency',       domain:'em',        equation:'f = qB / 2πm',        params:[{id:'q',label:'Charge',unit:'C',default:1.602e-19},{id:'B',label:'Magnetic Field',unit:'T',default:1},{id:'m',label:'Particle Mass',unit:'kg',default:1.673e-27}]},
+  larmor_radius:       {label:'Larmor Radius',             domain:'em',        equation:'r = mv / qB',         params:[{id:'m',label:'Mass',unit:'kg',default:1.673e-27},{id:'v',label:'Velocity',unit:'m/s',default:1e6},{id:'q',label:'Charge',unit:'C',default:1.602e-19},{id:'B',label:'Magnetic Field',unit:'T',default:1}]},
+  plasma_freq:         {label:'Plasma Frequency',          domain:'em',        equation:'ωₚ = √(ne²/ε₀m)',    params:[{id:'n',label:'Electron Density',unit:'m⁻³',default:1e18},{id:'e',label:'Electron Charge',unit:'C',default:1.602e-19},{id:'eps0',label:'Permittivity',unit:'F/m',default:8.854e-12},{id:'m',label:'Electron Mass',unit:'kg',default:9.109e-31}]},
+};
+
+const FALLBACK_CONSTANTS={
+  'Speed of Light (c)':'2.998 × 10⁸ m/s','Gravitational Constant (G)':'6.674 × 10⁻¹¹ m³/kg·s²',
+  'Planck Constant (h)':'6.626 × 10⁻³⁴ J·s','Reduced Planck (ℏ)':'1.055 × 10⁻³⁴ J·s',
+  'Boltzmann Constant (k_B)':'1.381 × 10⁻²³ J/K','Avogadro Number (Nₐ)':'6.022 × 10²³ mol⁻¹',
+  'Elementary Charge (e)':'1.602 × 10⁻¹⁹ C','Electron Mass (mₑ)':'9.109 × 10⁻³¹ kg',
+  'Proton Mass (mₚ)':'1.673 × 10⁻²⁷ kg','Vacuum Permittivity (ε₀)':'8.854 × 10⁻¹² F/m',
+  'Vacuum Permeability (μ₀)':'1.257 × 10⁻⁶ H/m','Stefan–Boltzmann (σ)':'5.671 × 10⁻⁸ W/m²·K⁴',
+  'Solar Mass (M☉)':'1.989 × 10³⁰ kg','Earth Mass (M⊕)':'5.972 × 10²⁴ kg',
+  'Earth Radius (R⊕)':'6.371 × 10⁶ m','1 AU':'1.496 × 10¹¹ m',
+};
+
 let formulaData={},activeKey=null;
 
 async function init(){
   try{
     const[fRes,cRes]=await Promise.all([fetch('/api/formulas'),fetch('/api/constants')]);
+    if(!fRes.ok||!cRes.ok)throw new Error();
     formulaData=await fRes.json();const constants=await cRes.json();
     document.getElementById('status-text').textContent='ALL SYSTEMS NOMINAL';
     buildSidebar();buildDomainGrid();buildConstants(constants);
-  }catch(e){document.getElementById('status-text').textContent='SERVER OFFLINE';}
+  }catch(e){
+    document.getElementById('status-text').textContent='OFFLINE — LOCAL MODE';
+    formulaData=FALLBACK_FORMULAS;
+    buildSidebar();buildDomainGrid();buildConstants(FALLBACK_CONSTANTS);
+  }
 }
 
 function buildSidebar(){
@@ -183,6 +287,8 @@ function buildConstants(data){
   }
 }
 
+
+
 function selectFormula(key){
   activeKey=key;
   const f=formulaData[key],meta=DOMAIN_META[f.domain];
@@ -202,45 +308,73 @@ function selectFormula(key){
   document.getElementById('results-panel').classList.add('hidden');
 }
 
+// Local calculation engine (runs when server is offline)
+function localCalc(key, p){
+  const n=k=>parseFloat(p[k]);
+  const fmt=v=>{
+    if(isNaN(v)||!isFinite(v))return'Invalid input';
+    const a=Math.abs(v);
+    if(a===0)return'0';
+    if(a>=1e4||a<1e-3)return v.toExponential(4);
+    return parseFloat(v.toPrecision(6)).toString();
+  };
+  const calcs={
+    orbital_velocity:  ()=>({'v (m/s)':fmt(Math.sqrt(n('G')*n('M')/n('r')))}),
+    escape_velocity:   ()=>({'v_esc (m/s)':fmt(Math.sqrt(2*n('G')*n('M')/n('r')))}),
+    orbital_period:    ()=>({'T (s)':fmt(2*Math.PI*Math.sqrt(Math.pow(n('a'),3)/(n('G')*n('M'))))}),
+    vis_viva:          ()=>({'v (m/s)':fmt(Math.sqrt(n('G')*n('M')*(2/n('r')-1/n('a'))))}),
+    hohmann_dv1:       ()=>{const r1=n('r1'),r2=n('r2'),mu=n('G')*n('M');return{'Δv₁ (m/s)':fmt(Math.sqrt(mu/r1)*(Math.sqrt(2*r2/(r1+r2))-1))};},
+    tsiolkovsky:       ()=>({'Δv (m/s)':fmt(n('ve')*Math.log(n('m0')/n('mf')))}),
+    thrust:            ()=>({'F (N)':fmt(n('mdot')*n('ve'))}),
+    specific_impulse:  ()=>({'Isp (s)':fmt(n('ve')/n('g0'))}),
+    mass_ratio:        ()=>({'R':fmt(n('m0')/n('mf'))}),
+    surface_gravity:   ()=>({'g (m/s²)':fmt(n('G')*n('M')/(n('R')**2))}),
+    roche_limit:       ()=>({'d (m)':fmt(n('RM')*Math.cbrt(2*n('rhoM')/n('rhom')))}),
+    hill_sphere:       ()=>({'r_H (m)':fmt(n('a')*Math.cbrt(n('m')/(3*n('M'))))}),
+    time_dilation:     ()=>{const g=Math.sqrt(1-(n('v')**2/n('c')**2));return{'t (s)':fmt(n('t0')/g),'γ (Lorentz)':fmt(1/g)};},
+    length_contraction:()=>({'L (m)':fmt(n('L0')*Math.sqrt(1-(n('v')**2/n('c')**2)))}),
+    schwarzschild:     ()=>({'r_s (m)':fmt(2*n('G')*n('M')/(n('c')**2))}),
+    kerr_horizon:      ()=>{const rg=n('G')*n('M')/(n('c')**2),disc=Math.sqrt(Math.max(0,rg**2-n('a')**2));return{'r+ (m)':fmt(rg+disc),'r- (m)':fmt(rg-disc)};},
+    mass_energy:       ()=>({'E (J)':fmt(n('m')*n('c')**2)}),
+    de_broglie:        ()=>({'λ (m)':fmt(n('h')/n('p'))}),
+    heisenberg:        ()=>({'Δp_min (kg·m/s)':fmt(n('hbar')/(2*n('dx')))}),
+    photon_energy:     ()=>({'E (J)':fmt(n('h')*n('f')),'E (eV)':fmt(n('h')*n('f')/1.602e-19)}),
+    bohr_radius:       ()=>({'a₀ (m)':fmt(n('hbar')**2/(n('me')*n('k')*n('e')**2))}),
+    coulomb:           ()=>({'F (N)':fmt(n('k')*n('q1')*n('q2')/n('r')**2)}),
+    cyclotron_freq:    ()=>({'f (Hz)':fmt(n('q')*n('B')/(2*Math.PI*n('m')))}),
+    larmor_radius:     ()=>({'r (m)':fmt(n('m')*n('v')/(n('q')*n('B')))}),
+    plasma_freq:       ()=>({'ωₚ (rad/s)':fmt(Math.sqrt(n('n')*n('e')**2/(n('eps0')*n('m'))))}),
+  };
+  return calcs[key]?calcs[key]():{'Error':'No local solver for this formula'};
+}
+
 document.getElementById('calc-btn').addEventListener('click',async()=>{
   if(!activeKey)return;
   const btn=document.getElementById('calc-btn');
   btn.classList.add('loading');btn.textContent='⏳ COMPUTING...';
   const params={};
   document.querySelectorAll('.pi').forEach(inp=>{params[inp.dataset.id]=inp.value;});
+
+  let results=null,serverUsed=false;
   try{
     const res=await fetch('/api/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({formula:activeKey,params})});
     const data=await res.json();
-    document.getElementById('results-panel').classList.remove('hidden');
-    // Meta line: iterations + stability
-    const iters=(data.iterations||1).toLocaleString();
-    const ms=data.elapsed_ms||'—';
-    const stable=data.any_drift===false;
-    const stableTag=stable
-      ?`<span style="color:var(--green)">✓ STABLE</span>`
-      :`<span style="color:var(--orange)">⚠ DRIFT</span>`;
-    document.getElementById('calc-meta').innerHTML=
-      `<span style="color:var(--dim)">${iters} runs · ${ms}ms</span>&nbsp;&nbsp;${stableTag}`;
-    const body=document.getElementById('results-body');
-    if(data.ok){
-      body.innerHTML='';
-      for(const[k,v]of Object.entries(data.results)){
-        const prec=data.precision&&data.precision[k];
-        const note=prec
-          ?(prec.stable
-            ?`<span style="font-size:0.58rem;color:var(--mute);margin-left:6px">avg identical</span>`
-            :`<span style="font-size:0.58rem;color:var(--orange);margin-left:6px">drift ${prec.drift.toExponential(1)}</span>`)
-          :'';
-        const row=document.createElement('div');row.className='rr';
-        row.innerHTML=`<span class="rk">${k}</span><span class="rv">${v}${note}</span>`;
-        body.appendChild(row);
-      }
-    }else{
-      body.innerHTML=`<div class="errmsg">⚠ ${data.error}</div>`;
-    }
-  }catch(e){
-    document.getElementById('results-panel').classList.remove('hidden');
-    document.getElementById('results-body').innerHTML=`<div class="errmsg">⚠ ${e.message}</div>`;
+    if(res.ok&&data.ok){results=data.results;serverUsed=true;}
+  }catch(_){}
+
+  if(!results) results=localCalc(activeKey,params);
+
+  document.getElementById('results-panel').classList.remove('hidden');
+  document.getElementById('calc-meta').innerHTML=
+    serverUsed
+      ?`<span style="color:var(--dim)">server</span>`
+      :`<span style="color:var(--accent2)">local compute</span>`;
+  const body=document.getElementById('results-body');
+  body.innerHTML='';
+  for(const[k,v]of Object.entries(results)){
+    const row=document.createElement('div');row.className='rr';
+    row.innerHTML=`<span class="rk">${k}</span><span class="rv">${v}</span>`;
+    body.appendChild(row);
   }
   btn.classList.remove('loading');btn.textContent='▶ CALCULATE';
 });
